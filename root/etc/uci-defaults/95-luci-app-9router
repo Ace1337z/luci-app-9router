@@ -1,0 +1,15 @@
+#!/bin/sh
+# First-boot / post-sysupgrade setup for luci-app-9router.
+#
+# Idempotent: creates the 9router account, directories and a random dashboard
+# password only when missing, then reloads rpcd so the "9router" ubus object is
+# available without a reboot.
+#
+# The package postinst runs the same script, so a normal opkg/apk install and a
+# firmware image both end up in the same state.
+
+[ -x /usr/libexec/9router/setup.sh ] || exit 0
+
+/usr/libexec/9router/setup.sh
+
+exit 0

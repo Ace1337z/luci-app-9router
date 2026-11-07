@@ -1,0 +1,30 @@
+{
+	"admin/services/9router": {
+		"title": "9Router",
+		"order": 60,
+		"action": {
+			"type": "firstchild"
+		},
+		"depends": {
+			"acl": [ "luci-app-9router" ]
+		}
+	},
+
+	"admin/services/9router/overview": {
+		"title": "Overview",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "9router/overview"
+		}
+	},
+
+	"admin/services/9router/settings": {
+		"title": "Settings",
+		"order": 90,
+		"action": {
+			"type": "view",
+			"path": "9router/settings"
+		}
+	}
+}

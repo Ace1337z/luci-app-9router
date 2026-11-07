@@ -1,0 +1,70 @@
+#!/bin/sh /etc/rc.common
+# procd service for 9router-go.
+#
+# The gateway runs as the unprivileged "9router" user. All configuration is
+# read here, as root, and handed to the child through procd's environment, so
+# /etc/config/9router can stay mode 0600 and the dashboard password is not
+# readable by any other local account.
+
+START=95
+STOP=10
+USE_PROCD=1
+CONFIG=9router
+
+start_service() {
+	local enabled bin data_dir bind port password monitor user
+
+	config_load "$CONFIG"
+	config_get_bool enabled main enabled 0
+	[ "$enabled" = 1 ] || return 0
+
+	config_get bin      main binary                /usr/libexec/9router/9router-go
+	config_get data_dir main data_dir              /srv/9router
+	config_get bind     main bind                  0.0.0.0
+	config_get port     main port                  20130
+	config_get password main dashboard_password    ''
+
+	if [ ! -x "$bin" ]; then
+		logger -t 9router "binary not installed: $bin"
+		return 1
+	fi
+
+	# Defensive: setup.sh normally guarantees this, but a restored config on a
+	# fresh overlay can arrive before the postinst has run.
+	mkdir -p "$data_dir" /var/run/9router 2>/dev/null
+	chown 9router:9router "$data_dir" /var/run/9router 2>/dev/null
+
+	if [ -z "$password" ]; then
+		password=$(hexdump -n 16 -v -e '16/1 "%02x"' /dev/urandom 2>/dev/null)
+		[ -n "$password" ] || password=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
+		[ -n "$password" ] && uci -q set "$CONFIG.main.dashboard_password=$password"
+		uci -q commit "$CONFIG"
+	fi
+
+	procd_open_instance 9router
+	# run.sh only fixes stdin (see its header) and writes the PID file; the
+	# process image is the gateway itself, so procd supervises it directly.
+	procd_set_param command /bin/sh /usr/libexec/9router/run.sh
+	procd_set_param env \
+		BIN="$bin" \
+		DATA_DIR="$data_dir" \
+		HOST="$bind" \
+		PORT="$port" \
+		INITIAL_PASSWORD="$password" \
+		AUTO_UPDATE=false \
+		HOME=/var/run/9router \
+		TMPDIR=/var/run/9router
+	procd_set_param user 9router
+	procd_set_param group 9router
+	# 3600s window, 5s between restarts, give up after 5 crashes in that window.
+	# A wrong-architecture or glibc binary lands here instead of fork-bombing.
+	procd_set_param respawn 3600 5 5
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param limits nofile="4096 4096"
+	procd_close_instance
+}
+
+service_triggers() {
+	procd_add_reload_trigger "$CONFIG"
+}

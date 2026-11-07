@@ -1,0 +1,24 @@
+# 9router-go service configuration.
+#
+# dashboard_password is stored here because the upstream process reads
+# INITIAL_PASSWORD from its environment; OpenWrt config files are root-owned.
+# setup.sh generates a random value on first install. Change it in LuCI
+# (Services -> 9Router -> Settings) or in the 9Router dashboard.
+#
+# data_dir must be on persistent storage (/srv lives on the overlay here).
+# It is deliberately NOT /etc: sysupgrade backups copy /etc, and a multi-hundred
+# megabyte SQLite database does not belong in a configuration backup.
+
+config 9router 'main'
+	option enabled '0'
+	option bind '0.0.0.0'
+	option port '20130'
+	option data_dir '/srv/9router'
+	option binary '/usr/libexec/9router/9router-go'
+	option dashboard_password ''
+	option monitor '1'
+	option sample_interval '30'
+	option history_points '1440'
+	option history_file '/var/run/9router/monitor.csv'
+	option release_repo 'OWNER/9router-go-openwrt'
+	option release_version 'latest'

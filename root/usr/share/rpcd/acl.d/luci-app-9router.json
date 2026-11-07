@@ -1,0 +1,33 @@
+{
+	"luci-app-9router": {
+		"description": "9Router: install/run 9router-go, read status and resource history",
+
+		"read": {
+			"ubus": {
+				"9router": [
+					"status",
+					"stats",
+					"install_status",
+					"logs",
+					"reveal_password"
+				]
+			},
+			"uci": [ "9router" ]
+		},
+
+		"write": {
+			"ubus": {
+				"9router": [
+					"install",
+					"start",
+					"stop",
+					"restart",
+					"rollback",
+					"uninstall",
+					"set_password"
+				]
+			},
+			"uci": [ "9router" ]
+		}
+	}
+}

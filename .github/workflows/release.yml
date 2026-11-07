@@ -1,0 +1,83 @@
+name: release-assets
+
+# Builds static musl-compatible 9router-go binaries and attaches them to the
+# GitHub release for the pushed tag. OpenWrt's installer (luci-app-9router)
+# downloads exactly these asset names:
+#   9router-go-linux-<arch>-static.gz
+#   SHA256SUMS.txt
+#
+# Tag format: v* (for example v1.9.15-owrt.1). The binary itself is built from
+# the upstream source at UPSTREAM_TAG below, so the asset version and the
+# upstream code version stay decoupled.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to publish (e.g. v1.9.15-owrt.1)'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  UPSTREAM_REPO: https://github.com/luqman-v1/9router-go
+  UPSTREAM_TAG: ${{ vars.UPSTREAM_TAG || 'main' }}
+
+jobs:
+  assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+          cache: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y file gzip
+
+      - name: Build static assets
+        env:
+          REPO: ${{ env.UPSTREAM_REPO }}
+          SRC: ${{ github.workspace }}/.upstream
+        run: |
+          chmod +x scripts/build-static.sh
+          sh scripts/build-static.sh "$UPSTREAM_TAG" dist
+
+      - name: Show results
+        run: |
+          ls -l dist
+          cat dist/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: static-assets
+          path: dist/*
+
+  release:
+    needs: assets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: static-assets
+          path: dist
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            dist/*.gz
+            dist/SHA256SUMS.txt

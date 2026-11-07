@@ -1,0 +1,10 @@
+# build outputs
+/dist/
+*.ipk
+*.apk
+*.gz.bin
+
+# editor / OS noise
+*.swp
+*~
+.DS_Store

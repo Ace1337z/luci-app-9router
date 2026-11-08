@@ -1,0 +1,183 @@
+/* 9Router panel - scoped styles.
+   Every selector is prefixed .nr- so nothing leaks into other LuCI pages.
+
+   Palette: Vantage (the BYTE default) only defines --v-*; Bootstrap and the
+   older themes define the --background-color-* , --border-color-* and
+   --text-color-* families. Vantage replaces the LuCI stylesheet, so the
+   Bootstrap names resolve to nothing and any literal light fallback wins:
+   white tiles under the theme's light text, i.e. an unreadable "dual tone"
+   page. Resolve once on .nr-page, Vantage first, legacy LuCI second, literal
+   light last, and use only --nr-* below. */
+.nr-page {
+	--nr-surface: var(--v-surface, var(--background-color-high, #ffffff));
+	--nr-surface-2: var(--v-surface-2, var(--background-color-high, #ffffff));
+	--nr-surface-3: var(--v-surface-3, var(--background-color-medium, #f4f7fa));
+	--nr-line: var(--v-line, var(--border-color-low, #d8dee6));
+	--nr-text: var(--v-text, var(--text-color-high, #14171a));
+	--nr-muted: var(--v-text-2, var(--text-color-medium, #5a6472));
+	--nr-faint: var(--v-text-3, var(--text-color-low, #8b96a3));
+	--nr-ok: var(--v-ok, #1b7f3b);
+	--nr-warn: var(--v-warn, #9a6b00);
+	--nr-err: var(--v-err, #b3261e);
+	--nr-accent: var(--v-chart-2, var(--primary-color, #3c78c8));
+	--nr-meter: var(--v-meter, color-mix(in srgb, var(--nr-text) 14%, transparent));
+	--nr-chart-1: var(--v-chart-1, #3c78c8);
+	--nr-chart-2: var(--v-chart-2, #6a1b9a);
+	--nr-chart-3: var(--v-chart-3, #ef6c00);
+	--nr-chart-4: var(--v-chart-4, #00838f);
+	--nr-chart-grid: var(--v-chart-grid, var(--nr-line));
+
+	color: var(--nr-text);
+}
+
+.nr-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+.nr-row--mt { margin-top: 12px; }
+
+.nr-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: 12px;
+	margin-top: 12px;
+}
+
+.nr-card {
+	flex: 1 1 240px;
+	min-width: 240px;
+	padding: 12px 14px;
+	border: 1px solid var(--nr-line);
+	border-radius: 10px;
+	background: var(--nr-surface);
+	color: var(--nr-text);
+}
+
+.nr-card__title {
+	font-weight: 600;
+	font-size: 11px;
+	letter-spacing: .3px;
+	text-transform: uppercase;
+	color: var(--nr-muted);
+	margin-bottom: 8px;
+}
+
+.nr-big {
+	font-size: 170%;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	color: var(--nr-text);
+}
+.nr-big--ok { color: var(--nr-ok); }
+.nr-big--err { color: var(--nr-err); }
+.nr-big--md { font-size: 150%; }
+
+.nr-kv {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 2px 0;
+	font-size: 95%;
+}
+.nr-kv > span:first-child { color: var(--nr-muted); }
+.nr-kv > span:last-child { text-align: right; overflow-wrap: anywhere; color: var(--nr-text); }
+.nr-kv a { color: var(--nr-accent); }
+
+.nr-bar {
+	background: var(--nr-meter);
+	border-radius: 3px;
+	height: 8px;
+	overflow: hidden;
+	margin: 6px 0;
+}
+.nr-bar__fill {
+	height: 8px;
+	border-radius: 3px;
+	background: var(--nr-accent);
+}
+.nr-bar__fill--ok { background: var(--nr-ok); }
+.nr-bar__fill--err { background: var(--nr-err); }
+
+.nr-section {
+	margin-top: 12px;
+	padding: 12px 14px;
+	border: 1px solid var(--nr-line);
+	border-radius: 10px;
+	background: var(--nr-surface);
+	color: var(--nr-text);
+}
+.nr-section h3 {
+	margin: 0 0 6px;
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--nr-text);
+}
+
+.nr-dim { font-size: 92%; color: var(--nr-muted); }
+.nr-faint { font-size: 80%; color: var(--nr-faint); }
+.nr-hint { font-size: 90%; color: var(--nr-muted); margin-left: 8px; }
+
+.nr-note {
+	padding: 10px 12px;
+	margin-bottom: 8px;
+	border-radius: 8px;
+	border: 1px solid color-mix(in srgb, var(--nr-warn) 40%, transparent);
+	border-left: 3px solid var(--nr-warn);
+	background: color-mix(in srgb, var(--nr-warn) 12%, var(--nr-surface));
+	color: var(--nr-text);
+	font-size: 92%;
+	line-height: 1.45;
+}
+
+.nr-empty {
+	padding: 12px;
+	border: 1px solid var(--nr-line);
+	border-radius: 10px;
+	background: var(--nr-surface);
+	color: var(--nr-muted);
+}
+
+.nr-chart__head,
+.nr-chart__foot {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+}
+.nr-chart__head { font-size: 90%; color: var(--nr-muted); }
+.nr-chart__foot { font-size: 80%; color: var(--nr-faint); }
+.nr-chart__svg {
+	display: block;
+	width: 100%;
+	border-radius: 6px;
+	background: var(--nr-surface-3);
+}
+.nr-chart__grid { stroke: var(--nr-chart-grid); stroke-width: 1; }
+.nr-chart__line {
+	fill: none;
+	stroke-width: 1.6;
+	vector-effect: non-scaling-stroke;
+	stroke-linejoin: round;
+	stroke-linecap: round;
+}
+.nr-chart__area { stroke: none; opacity: .16; }
+
+.nr-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+.nr-pre {
+	max-height: 60vh;
+	overflow: auto;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	font-size: 85%;
+	background: var(--nr-surface-3);
+	color: var(--nr-text);
+	padding: 10px;
+	border-radius: 8px;
+	border: 1px solid var(--nr-line);
+}

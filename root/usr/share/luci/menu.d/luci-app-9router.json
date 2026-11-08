@@ -1,7 +1,16 @@
 {
-	"admin/services/9router": {
+	"admin/tools": {
+		"title": "Tools",
+		"order": 50,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"admin/tools/9router": {
 		"title": "9Router",
-		"order": 60,
+		"order": 20,
 		"action": {
 			"type": "firstchild"
 		},
@@ -10,7 +19,7 @@
 		}
 	},
 
-	"admin/services/9router/overview": {
+	"admin/tools/9router/overview": {
 		"title": "Overview",
 		"order": 10,
 		"action": {
@@ -19,7 +28,7 @@
 		}
 	},
 
-	"admin/services/9router/settings": {
+	"admin/tools/9router/settings": {
 		"title": "Settings",
 		"order": 90,
 		"action": {

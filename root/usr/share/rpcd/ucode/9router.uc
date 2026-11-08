@@ -17,12 +17,24 @@ let uci = require('uci');
 
 let DEFAULT_BIN = '/usr/libexec/9router/9router-go';
 let DEFAULT_DATA = '/srv/9router';
+// Built-in release source for one-click install. Assets are static builds of
+// luqman-v1/9router-go published by this repository's release workflow.
+let DEFAULT_REPO = 'Ace1337z/luci-app-9router';
 let RUN_DIR = '/var/run/9router';
 
 function cfg(key, def) {
 	let c = uci.cursor();
 	let v = c.get('9router', 'main', key);
 	return (v == null || v === '') ? def : v;
+}
+
+// Resolve the release source: explicit mirror wins, empty or the old
+// OWNER/... placeholder falls back to the built-in repository.
+function release_repo() {
+	let r = cfg('release_repo', DEFAULT_REPO);
+	if (r == '' || match(r, /^OWNER\//))
+		r = DEFAULT_REPO;
+	return r;
 }
 
 function toint(v, def) {
@@ -337,7 +349,7 @@ function get_status() {
 		monitor: cfg('monitor', '1') == '1',
 		sample_interval: toint(cfg('sample_interval', '30'), 30),
 		history_points: toint(cfg('history_points', '1440'), 1440),
-		release_repo: cfg('release_repo', ''),
+		release_repo: release_repo(),
 		release_version: cfg('release_version', 'latest'),
 		machine: machine,
 		arch: arch,
@@ -411,7 +423,7 @@ return {
 				if (!version)
 					version = cfg('release_version', 'latest');
 				if (!repo)
-					repo = cfg('release_repo', '');
+					repo = release_repo();
 
 				if (!match(version, /^[A-Za-z0-9._-]+$/))
 					return { started: false, error: 'Invalid version' };

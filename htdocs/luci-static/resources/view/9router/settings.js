@@ -6,13 +6,16 @@
 
 var callRestart = rpc.declare({ object: '9router', method: 'restart', expect: {} });
 
+var DEFAULT_REPO = 'Ace1337z/luci-app-9router';
+
 return view.extend({
 	render: function() {
 		var m, s, o;
 
 		m = new form.Map('9router', _('9Router'),
-			_('Runtime settings for the 9router-go gateway and its resource sampler. ' +
-			  'Saving restarts the service, because the init scripts register a procd reload trigger for this config.'));
+			_('Installation is one click on the Overview page: the package already knows where ' +
+			  'to download the static build of luqman-v1/9router-go. Change the fields below only ' +
+			  'if this router needs a mirror or a pinned release.'));
 
 		s = m.section(form.NamedSection, 'main', '9router', _('Service'));
 		s.addremove = false;
@@ -39,17 +42,23 @@ return view.extend({
 		o.placeholder = '/srv/9router';
 		o.rmempty = false;
 
+		s = m.section(form.NamedSection, 'main', '9router', _('Release source (optional)'));
+		s.addremove = false;
+		s.description = _('Leave these at their defaults for one-click install. An empty repository ' +
+			'also means "use the built-in source".');
+
 		o = s.option(form.Value, 'release_repo', _('Release repository'),
 			_('GitHub owner/repo that publishes the static musl assets ' +
-			  '(9router-go-linux-{arch}-static.gz and SHA256SUMS.txt).'));
+			  '(9router-go-linux-{arch}-static.gz and SHA256SUMS.txt). ' +
+			  'Empty or the old OWNER/ placeholder falls back to the built-in source.'));
 		o.datatype = 'string';
-		o.placeholder = 'owner/9router-go-openwrt';
-		o.rmempty = false;
+		o.placeholder = DEFAULT_REPO;
+		o.rmempty = true;
 
 		o = s.option(form.Value, 'release_version', _('Release version'),
 			_('"latest" resolves through the GitHub API; pin a tag to avoid API rate limits and surprise upgrades.'));
 		o.placeholder = 'latest';
-		o.rmempty = false;
+		o.rmempty = true;
 
 		o = s.option(form.ListValue, 'install_arch', _('Force architecture'),
 			_('Override CPU detection only if the release asset naming does not match this device.'));
@@ -64,7 +73,7 @@ return view.extend({
 		o.value('mips64', 'mips64');
 		o.value('mips64le', 'mips64le');
 		o.default = '';
-		o.rmempty = false;
+		o.rmempty = true;
 
 		s = m.section(form.NamedSection, 'main', '9router', _('Resource sampler'));
 		s.addremove = false;
@@ -102,6 +111,17 @@ return view.extend({
 			return callRestart().then(function() {
 				ui.addNotification(null, E('p', {}, _('9router restarted.')));
 			});
+		};
+
+		s = m.section(form.NamedSection, 'main', '9router', _('Support'));
+		s.addremove = false;
+
+		o = s.option(form.DummyValue, '_maintainer', _('Maintainer'));
+		o.rawhtml = true;
+		o.cfgvalue = function() {
+			return '<a href="https://t.me/bytewrt" target="_blank" rel="noopener noreferrer">Telegram @bytewrt</a>' +
+			       ' &middot; ' +
+			       '<a href="https://github.com/Ace1337z/luci-app-9router/issues" target="_blank" rel="noopener noreferrer">GitHub issues</a>';
 		};
 
 		return m.render();

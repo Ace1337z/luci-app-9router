@@ -27,7 +27,15 @@ echo "==> building $TAG from $REPO into $SRC"
 [ -d "$SRC/.git" ] || git clone --depth 1 --branch "$TAG" "$REPO" "$SRC"
 
 # Resolve the main package once; older layouts keep main at the repo root.
-if [ -d "$SRC/cmd" ]; then MAINPKG="./cmd/..."; else MAINPKG="."; fi
+if [ -d "$SRC/cmd/9router-go" ]; then
+	MAINPKG="./cmd/9router-go/"
+elif [ -d "$SRC/cmd" ]; then
+	# cmd/ holds helper binaries too; ./cmd/... is not a single package.
+	MAINPKG="./cmd/9router-go/"
+else
+	MAINPKG="."
+fi
+[ -d "$SRC${MAINPKG#.}" ] || MAINPKG="."
 
 # The frontend is embedded by the Go build. dist/ is gitignored upstream, so a
 # clean clone has no assets unless we build them.
@@ -38,6 +46,10 @@ fi
 
 mkdir -p "$OUT"
 
+# Upstream prints the version with a leading "v" of its own; strip ours so the
+# banner does not read "vv1.9.15".
+VERSION="${TAG#v}"
+
 # arch -> GOARCH, plus ABI pinning that OpenWrt targets actually use.
 # OpenWrt ARM is little-endian; mips routers are big-endian except mipsel ones.
 build_one() {
@@ -46,7 +58,8 @@ build_one() {
 	echo "==> $arch  GOARCH=$goarch $extra"
 	# shellcheck disable=SC2086
 	( cd "$SRC" && env CGO_ENABLED=0 GOOS=linux GOARCH="$goarch" $extra \
-		go build -trimpath -buildvcs=false -ldflags "-s -w" \
+		go build -trimpath -buildvcs=false \
+			-ldflags "-s -w -X 9router/proxy/internal/updater.CurrentVersion=$VERSION" \
 			-o "$out" "$MAINPKG" )
 	[ -s "$out" ] || { echo "ERROR: build produced nothing for $arch" >&2; exit 1; }
 	if command -v file >/dev/null 2>&1; then
@@ -60,15 +73,25 @@ build_one() {
 	rm -f "$out"
 }
 
-build_one amd64    amd64   ""
-build_one arm64    arm64   ""
-build_one armv7    arm     "GOARM=7"
-build_one armv6    arm     "GOARM=6"
-build_one 386      386     ""
-build_one mips     mips    "GOMIPS=softfloat"
-build_one mipsle   mipsle  "GOMIPS=softfloat"
-build_one mips64   mips64  "GOMIPS64=softfloat"
-build_one mips64le mips64le "GOMIPS64=softfloat"
+# ARCHES lets a caller build a subset (e.g. ARCHES="arm64 amd64" for a quick
+# router test). Unset means every supported OpenWrt architecture.
+WANTED=" ${ARCHES:-amd64 arm64 armv7 armv6 386 mips mipsle mips64 mips64le} "
+want() {
+	case "$WANTED" in
+		*" $1 "*) return 0 ;;
+		*) echo "==> skipping $1 (not in ARCHES)" >&2; return 1 ;;
+	esac
+}
+
+want amd64    && build_one amd64    amd64   ""
+want arm64    && build_one arm64    arm64   ""
+want armv7    && build_one armv7    arm     "GOARM=7"
+want armv6    && build_one armv6    arm     "GOARM=6"
+want 386      && build_one 386      386     ""
+want mips     && build_one mips     mips    "GOMIPS=softfloat"
+want mipsle   && build_one mipsle   mipsle  "GOMIPS=softfloat"
+want mips64   && build_one mips64   mips64  "GOMIPS64=softfloat"
+want mips64le && build_one mips64le mips64le "GOMIPS64=softfloat"
 
 ( cd "$OUT" && sha256sum ./*.gz | sed 's#\./##' > SHA256SUMS.txt )
 

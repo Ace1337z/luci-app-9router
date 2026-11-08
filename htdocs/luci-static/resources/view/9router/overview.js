@@ -5,6 +5,15 @@
 'require poll';
 'require dom';
 
+// 9Router panel. Colours come from the theme through the .nr-* classes in
+// 9router.css: this view must not use literal light-theme values, because
+// Vantage (the BYTE default) paints a dark page and a hardcoded white surface
+// here turns into light-on-light text.
+
+/* ?v= must match PKG_VERSION-PKG_RELEASE in the package Makefile; L.resource()
+   adds no cache buster, so without one a browser keeps the old stylesheet. */
+var CSS_URL = L.resource('9router/9router.css') + '?v=1.0.0-r3';
+
 var callStatus = rpc.declare({
 	object: '9router',
 	method: 'status',
@@ -77,15 +86,16 @@ function clock(ts) {
 	return '%02d:%02d'.format(d.getHours(), d.getMinutes());
 }
 
-/* Series chart: [values], opts = { max, unit, label, color, fmt } */
+/* Series chart: [values], opts = { max, unit, label, color, fmt }
+   `color` is a CSS custom property reference (e.g. var(--nr-chart-1)) so the
+   stroke follows the active theme instead of a fixed hex value. */
 function chart(values, opts) {
 	opts = opts || {};
 	var w = 600, h = 110, pad = 2;
 	values = (values || []).map(function(v) { return Math.max(0, +v || 0); });
 
 	if (values.length < 2)
-		return E('div', { 'class': 'ifacebox', 'style': 'padding:12px;color:#777' },
-			_('Collecting samples...'));
+		return E('div', { 'class': 'nr-empty' }, _('Collecting samples...'));
 
 	var max = opts.max;
 	if (max == null) {
@@ -107,9 +117,10 @@ function chart(values, opts) {
 	var area = '%.1f,%.1f '.format(pad, h - pad) + line + ' %.1f,%.1f'.format(pad + (values.length - 1) * step, h - pad);
 	var last = values[values.length - 1];
 	var fmt = opts.fmt || function(v) { return '%.1f'.format(v); };
+	var color = opts.color || 'var(--nr-chart-1)';
 
 	return E('div', {}, [
-		E('div', { 'style': 'display:flex;justify-content:space-between;font-size:90%;color:#666' }, [
+		E('div', { 'class': 'nr-chart__head' }, [
 			E('span', {}, opts.label || ''),
 			E('span', {}, fmt(last) + (opts.unit ? ' ' + opts.unit : ''))
 		]),
@@ -118,14 +129,14 @@ function chart(values, opts) {
 			'preserveAspectRatio': 'none',
 			'width': '100%',
 			'height': '%d'.format(h),
-			'style': 'display:block;background:#f8f8f8;border-radius:3px'
+			'class': 'nr-chart__svg'
 		}, [
-			E('line', { 'x1': pad, 'y1': pad, 'x2': w - pad, 'y2': pad, 'stroke': '#e4e4e4', 'stroke-width': 1 }),
-			E('line', { 'x1': pad, 'y1': (h / 2), 'x2': w - pad, 'y2': (h / 2), 'stroke': '#e4e4e4', 'stroke-width': 1 }),
-			E('polygon', { 'points': area, 'fill': opts.color || 'rgba(60,120,200,0.18)', 'stroke': 'none' }),
-			E('polyline', { 'points': line, 'fill': 'none', 'stroke': opts.color || '#3c78c8', 'stroke-width': 1.6, 'vector-effect': 'non-scaling-stroke' })
+			E('line', { 'x1': pad, 'y1': pad, 'x2': w - pad, 'y2': pad, 'class': 'nr-chart__grid' }),
+			E('line', { 'x1': pad, 'y1': (h / 2), 'x2': w - pad, 'y2': (h / 2), 'class': 'nr-chart__grid' }),
+			E('polygon', { 'points': area, 'class': 'nr-chart__area', 'style': 'fill:' + color }),
+			E('polyline', { 'points': line, 'class': 'nr-chart__line', 'style': 'stroke:' + color })
 		]),
-		E('div', { 'style': 'display:flex;justify-content:space-between;font-size:80%;color:#999' }, [
+		E('div', { 'class': 'nr-chart__foot' }, [
 			E('span', {}, state.stats && state.stats.ts.length ? clock(state.stats.ts[0]) : ''),
 			E('span', {}, opts.maxLabel || 'max ' + (opts.max != null ? fmt(opts.max) : fmt(max))),
 			E('span', {}, state.stats && state.stats.ts.length ? clock(state.stats.ts[state.stats.ts.length - 1]) : '')
@@ -133,28 +144,30 @@ function chart(values, opts) {
 	]);
 }
 
+/* The LuCI DOM helper flattens one array level only. Passing the body array
+   straight into E() therefore rendered "[object HTMLDivElement]" instead of the
+   rows: concat flattens it here. */
 function card(title, body, extra) {
-	return E('div', {
-		'class': 'ifacebox',
-		'style': 'flex:1 1 240px;min-width:240px;padding:12px;border:1px solid #ddd;border-radius:4px;background:#fff'
-	}, [
-		E('div', { 'style': 'font-weight:bold;margin-bottom:8px;color:#555' }, title),
-		body,
-		extra || ''
-	]);
+	var kids = [ E('div', { 'class': 'nr-card__title' }, title) ].concat(body || []);
+	if (extra)
+		kids.push(extra);
+	return E('div', { 'class': 'nr-card' }, kids);
 }
 
 function kv(label, value) {
-	return E('div', { 'style': 'display:flex;justify-content:space-between;padding:2px 0;font-size:95%' }, [
-		E('span', { 'style': 'color:#666' }, label),
-		E('span', { 'style': 'text-align:right' }, value)
+	return E('div', { 'class': 'nr-kv' }, [
+		E('span', {}, label),
+		E('span', {}, value)
 	]);
 }
 
-function bar(value, total, color) {
+function bar(value, total, tone) {
 	var p = pct(value, total);
-	return E('div', { 'style': 'background:#eee;border-radius:3px;height:8px;overflow:hidden;margin:6px 0' }, [
-		E('div', { 'style': 'height:8px;width:%.1f%%;background:%s'.format(p, color || '#3c78c8') })
+	return E('div', { 'class': 'nr-bar' }, [
+		E('div', {
+			'class': 'nr-bar__fill' + (tone ? ' nr-bar__fill--' + tone : ''),
+			'style': 'width:%.1f%%'.format(p)
+		})
 	]);
 }
 
@@ -178,19 +191,19 @@ function act(fn) {
 function summaryCards() {
 	var st = state.status;
 	if (!st)
-		return E('div', { 'class': 'ifacebox' }, _('Loading...'));
+		return E('div', { 'class': 'nr-empty' }, _('Loading...'));
 
 	var run = st.running;
-	return E('div', { 'style': 'display:flex;flex-wrap:wrap;gap:12px' }, [
+	return E('div', { 'class': 'nr-row' }, [
 		card(_('Service'), [
-			E('div', { 'style': 'font-size:180%;font-weight:bold;color:' + (run ? '#2e7d32' : '#b71c1c') },
+			E('div', { 'class': 'nr-big ' + (run ? 'nr-big--ok' : 'nr-big--err') },
 				run ? _('Running') : _('Stopped')),
 			kv(_('Autostart'), st.enabled ? _('enabled') : _('disabled')),
 			kv(_('Uptime'), run ? dur(st.uptime) : '-'),
 			kv(_('PID'), run ? String(st.pid) : '-')
 		]),
 		card(_('Version'), [
-			E('div', { 'style': 'font-size:150%;font-weight:bold' }, st.version),
+			E('div', { 'class': 'nr-big nr-big--md' }, st.version),
 			kv(_('Installed'), st.installed ? _('yes') : _('no')),
 			kv(_('Arch'), st.arch || _('unsupported')),
 			kv(_('Binary'), st.binary_size ? kb(st.binary_size / 1024) : '-'),
@@ -215,17 +228,17 @@ function summaryCards() {
 
 function liveCards() {
 	var st = state.status, h = state.stats, last = (h && h.last) || {};
-	return E('div', { 'style': 'display:flex;flex-wrap:wrap;gap:12px;margin-top:12px' }, [
+	return E('div', { 'class': 'nr-row nr-row--mt' }, [
 		card(_('CPU'), [
-			E('div', { 'style': 'font-size:180%;font-weight:bold' }, '%.2f%%'.format(last.cpu || 0)),
+			E('div', { 'class': 'nr-big' }, '%.2f%%'.format(last.cpu || 0)),
 			kv(_('RSS'), kb(last.rss)),
 			kv(_('System memory used'), kb(last.mem)),
 			kv(_('Samples'), String((h && h.points) || 0))
 		]),
 		card(_('Flash (' + (st ? st.flash_path : '/') + ')'), [
-			E('div', { 'style': 'font-size:180%;font-weight:bold' },
+			E('div', { 'class': 'nr-big' },
 				'%.0f%%'.format(pct(last.fs_used, last.fs_total))),
-			bar(last.fs_used, last.fs_total, pct(last.fs_used, last.fs_total) > 85 ? '#c62828' : '#2e7d32'),
+			bar(last.fs_used, last.fs_total, pct(last.fs_used, last.fs_total) > 85 ? 'err' : 'ok'),
 			kv(_('Used'), kb(last.fs_used)),
 			kv(_('Free'), kb((st ? st.free_kb : 0)))
 		]),
@@ -233,7 +246,7 @@ function liveCards() {
 			kv(_('Interval'), (h && h.interval ? h.interval : st.sample_interval) + ' s'),
 			kv(_('Last sample'), last.age ? dur(last.age) + ' ' + _('ago') : _('none')),
 			kv(_('History'), '%d / %d'.format((h && h.points) || 0, st.history_points)),
-			kv(_('File'), _('tmpfs') )
+			kv(_('File'), _('tmpfs'))
 		])
 	]);
 }
@@ -241,34 +254,35 @@ function liveCards() {
 function chartsSection() {
 	var h = state.stats;
 	if (!h || !h.ts || !h.ts.length)
-		return E('div', { 'class': 'ifacebox', 'style': 'margin-top:12px;padding:12px' },
+		return E('div', { 'class': 'nr-empty', 'style': 'margin-top:12px' },
 			_('No samples yet. The sampler writes one line every %d seconds.').format(state.status ? state.status.sample_interval : 30));
 
 	var flashTotal = Math.max.apply(null, h.fs_total.concat([ 1 ]));
 
-	return E('div', { 'style': 'display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:12px' }, [
-		E('div', { 'class': 'ifacebox', 'style': 'padding:10px' }, chart(h.cpu, {
+	return E('div', { 'class': 'nr-cards' }, [
+		E('div', { 'class': 'nr-card' }, chart(h.cpu, {
 			label: _('Process CPU'),
 			unit: '%',
+			color: 'var(--nr-chart-1)',
 			fmt: function(v) { return '%.2f'.format(v); }
 		})),
-		E('div', { 'class': 'ifacebox', 'style': 'padding:10px' }, chart(h.rss, {
+		E('div', { 'class': 'nr-card' }, chart(h.rss, {
 			label: _('Process RSS'),
 			unit: 'MiB',
-			color: '#6a1b9a',
+			color: 'var(--nr-chart-2)',
 			fmt: function(v) { return '%.0f'.format(v / 1024); }
 		})),
-		E('div', { 'class': 'ifacebox', 'style': 'padding:10px' }, chart(h.fs_used, {
+		E('div', { 'class': 'nr-card' }, chart(h.fs_used, {
 			label: _('Flash used (of %s)').format(kb(flashTotal)),
 			unit: 'MiB',
-			color: '#ef6c00',
+			color: 'var(--nr-chart-3)',
 			max: flashTotal,
 			fmt: function(v) { return '%.0f'.format(v / 1024); }
 		})),
-		E('div', { 'class': 'ifacebox', 'style': 'padding:10px' }, chart(h.data, {
+		E('div', { 'class': 'nr-card' }, chart(h.data, {
 			label: _('Data directory'),
 			unit: 'MiB',
-			color: '#00838f',
+			color: 'var(--nr-chart-4)',
 			fmt: function(v) { return '%.1f'.format(v / 1024); }
 		}))
 	]);
@@ -280,11 +294,11 @@ function installBox() {
 	var pr = +ins.progress || 0;
 
 	var progress = E('div', { 'style': 'margin:8px 0' }, [
-		bar(pr, 100, ins.state === 'failed' ? '#c62828' : '#3c78c8'),
-		E('div', { 'style': 'font-size:90%;color:#666' }, '%d%% %s'.format(pr, ins.message || ins.state || 'idle'))
+		bar(pr, 100, ins.state === 'failed' ? 'err' : null),
+		E('div', { 'class': 'nr-dim' }, '%d%% %s'.format(pr, ins.message || ins.state || 'idle'))
 	]);
 
-	var buttons = E('div', { 'style': 'display:flex;flex-wrap:wrap;gap:8px;margin-top:8px' }, [
+	var buttons = E('div', { 'class': 'nr-actions' }, [
 		E('button', {
 			'class': 'cbi-button cbi-button-action',
 			'disabled': busy ? '' : null,
@@ -340,16 +354,20 @@ function installBox() {
 		}, _('Uninstall binary'))
 	]);
 
-	return E('div', { 'class': 'cbi-section', 'style': 'margin-top:12px;padding:12px;border:1px solid #ddd;border-radius:4px' }, [
-		E('h3', { 'style': 'margin:0 0 6px' }, _('Installation')),
+	var src = st.release_repo || 'Ace1337z/luci-app-9router';
+	var oneClick = src == 'Ace1337z/luci-app-9router';
+
+	return E('div', { 'class': 'nr-section' }, [
+		E('h3', {}, _('Installation')),
 		st.needs_reinstall
-			? E('div', {
-				'style': 'padding:8px;margin-bottom:8px;background:#fff3cd;border:1px solid #ffe08a;border-radius:3px'
-			}, _('Version %s was installed by LuCI, but the binary is gone (a sysupgrade or a manual delete removes /usr/libexec/9router). Install it again.').format(st.version))
+			? E('div', { 'class': 'nr-note' },
+				_('Version %s was installed by LuCI, but the binary is gone (a sysupgrade or a manual delete removes /usr/libexec/9router). Install it again.').format(st.version))
 			: '',
-		E('div', { 'style': 'font-size:92%;color:#666' },
-			_('Source: %s, version %s. Downloads are verified against SHA256SUMS.txt and the previous binary is kept for rollback.')
-				.format(st.release_repo || _('not configured'), st.release_version || 'latest')),
+		E('div', { 'class': 'nr-dim' },
+			(oneClick
+				? _('One click: downloads the static build of luqman-v1/9router-go from the built-in release source, verifies SHA256, starts the gateway and keeps the previous binary for rollback.')
+				: _('Source: %s, version %s. Downloads are verified against SHA256SUMS.txt and the previous binary is kept for rollback.')
+					.format(src, st.release_version || 'latest'))),
 		progress,
 		buttons
 	]);
@@ -400,11 +418,11 @@ function passwordBox() {
 		});
 	};
 
-	pwBoxEl = E('div', { 'class': 'cbi-section', 'style': 'margin-top:12px;padding:12px;border:1px solid #ddd;border-radius:4px' }, [
-		E('h3', { 'style': 'margin:0 0 6px' }, _('Dashboard password')),
-		E('div', { 'style': 'font-size:92%;color:#666;margin-bottom:6px' },
+	pwBoxEl = E('div', { 'class': 'nr-section' }, [
+		E('h3', {}, _('Dashboard password')),
+		E('div', { 'class': 'nr-dim', 'style': 'margin-bottom:6px' },
 			_('The value shown is the password generated at install time. If it was changed inside the 9router dashboard, that stored password wins; change it there instead.')),
-		E('div', { 'style': 'display:flex;gap:8px;flex-wrap:wrap' }, [
+		E('div', { 'class': 'nr-actions', 'style': 'margin-top:0' }, [
 			field,
 			E('button', { 'class': 'cbi-button', 'click': function(ev) { ev.preventDefault(); return reveal(); } }, _('Reveal')),
 			E('button', {
@@ -418,17 +436,15 @@ function passwordBox() {
 }
 
 function logsBox() {
-	return E('div', { 'class': 'cbi-section', 'style': 'margin-top:12px;padding:12px;border:1px solid #ddd;border-radius:4px' }, [
-		E('h3', { 'style': 'margin:0 0 6px' }, _('Diagnostics')),
+	return E('div', { 'class': 'nr-section' }, [
+		E('h3', {}, _('Diagnostics')),
 		E('button', {
 			'class': 'cbi-button',
 			'click': function(ev) {
 				ev.preventDefault();
 				return callLogs(200).then(function(r) {
 					ui.showModal(_('9Router log'), [
-						E('pre', {
-							'style': 'max-height:60vh;overflow:auto;white-space:pre-wrap;font-size:85%'
-						}, (r && r.log) || _('(empty)')),
+						E('pre', { 'class': 'nr-pre' }, (r && r.log) || _('(empty)')),
 						E('div', { 'class': 'right', 'style': 'margin-top:8px' }, [
 							E('button', { 'class': 'cbi-button', 'click': ui.hideModal }, _('Close'))
 						])
@@ -436,33 +452,21 @@ function logsBox() {
 				});
 			}
 		}, _('Show log')),
-		E('span', { 'style': 'font-size:90%;color:#666;margin-left:8px' },
+		E('span', { 'class': 'nr-hint' },
 			_('logread -e 9router and /var/log/9router-install.log'))
 	]);
 }
 
 function supportBox() {
-	return E('div', { 'class': 'cbi-section', 'style': 'margin-top:12px;padding:12px;border:1px solid #ddd;border-radius:4px' }, [
-		E('h3', { 'style': 'margin:0 0 6px' }, _('Maintainer')),
-		E('div', { 'style': 'font-size:92%;color:#666' },
+	return E('div', { 'class': 'nr-section' }, [
+		E('h3', {}, _('Maintainer')),
+		E('div', { 'class': 'nr-dim' },
 			_('This LuCI package is maintained by Ace1337z. Report bugs, packaging problems or release requests through either channel.')),
-		E('div', { 'style': 'display:flex;flex-wrap:wrap;gap:16px;margin-top:6px' }, [
-			E('span', {}, [
-				_('Telegram: '),
-				E('a', {
-					'href': 'https://t.me/bytewrt',
-					'target': '_blank',
-					'rel': 'noopener noreferrer'
-				}, '@bytewrt')
-			]),
-			E('span', {}, [
-				_('GitHub: '),
-				E('a', {
-					'href': 'https://github.com/Ace1337z/luci-app-9router/issues',
-					'target': '_blank',
-					'rel': 'noopener noreferrer'
-				}, 'Ace1337z/luci-app-9router')
-			])
+		E('div', { 'class': 'nr-actions' }, [
+			E('a', { 'class': 'cbi-button', 'href': 'https://t.me/bytewrt', 'target': '_blank', 'rel': 'noopener noreferrer' },
+				_('Telegram @bytewrt')),
+			E('a', { 'class': 'cbi-button', 'href': 'https://github.com/Ace1337z/luci-app-9router/issues', 'target': '_blank', 'rel': 'noopener noreferrer' },
+				_('GitHub issues'))
 		])
 	]);
 }
@@ -505,8 +509,10 @@ return view.extend({
 	},
 
 	render: function() {
+		document.head.appendChild(E('link', { rel: 'stylesheet', href: CSS_URL }));
+
 		var root = E('div', { 'id': '9router-root' }, [
-			E('div', { 'class': 'ifacebox' }, _('Loading...'))
+			E('div', { 'class': 'nr-empty' }, _('Loading...'))
 		]);
 
 		/* LuCI inserts the returned node after render() returns, so paint on
@@ -517,7 +523,7 @@ return view.extend({
 			return refresh();
 		}, 5);
 
-		return E('div', { 'class': 'cbi-map' }, [
+		return E('div', { 'class': 'cbi-map nr-page' }, [
 			E('h2', {}, _('9Router')),
 			E('div', { 'class': 'cbi-map-descr' },
 				_('Static 9router-go gateway: install, supervise and watch CPU, RAM, flash and data growth.')),

@@ -32,6 +32,17 @@ chown 9router:9router "$DATA_DIR" "$RUN_DIR" 2>/dev/null
 chmod 0700 "$DATA_DIR" 2>/dev/null
 chmod 0755 "$RUN_DIR" 2>/dev/null
 
+# Release source used by the one-click installer. Older configs ship the
+# "OWNER/9router-go-openwrt" placeholder, which cannot be downloaded from, so
+# treat it as unset and migrate it to the built-in repository. An explicit
+# mirror/fork value is left alone.
+release_repo=$(uci -q get "$CONFIG.main.release_repo")
+case "$release_repo" in
+	''|OWNER/*)
+		uci -q set "$CONFIG.main.release_repo=Ace1337z/luci-app-9router"
+		;;
+esac
+
 # Never ship the upstream "123456" fallback. Generate a 32-character hex
 # password once; the LuCI page can reveal it to an authenticated root session.
 if [ -z "$(uci -q get "$CONFIG.main.dashboard_password")" ]; then

@@ -20,6 +20,10 @@
 
 CONFIG=9router
 RUN_DIR=/var/run/9router
+# Built-in release source: this repository's own GitHub Releases carry the
+# static assets built from luqman-v1/9router-go. One-click install needs no
+# setting; release_repo only exists to point at a mirror or a fork.
+DEFAULT_REPO=Ace1337z/luci-app-9router
 STATE=$RUN_DIR/install.state
 LOCK=$RUN_DIR/install.lock
 PIDFILE=$RUN_DIR/9router.pid
@@ -33,12 +37,18 @@ config_get BIN     main binary           /usr/libexec/9router/9router-go
 config_get DATA    main data_dir         /srv/9router
 config_get PORT    main port             20130
 config_get BIND    main bind             0.0.0.0
-config_get REPO    main release_repo     ''
+config_get REPO    main release_repo     "$DEFAULT_REPO"
 config_get VERSION main release_version  'latest'
 config_get ARCHCFG main install_arch     ''
 
 [ -n "$1" ] && VERSION="$1"
 [ -n "$2" ] && REPO="$2"
+
+# Empty or the legacy placeholder from older configs means "use the built-in
+# release source", so upgrades become one-click without editing Settings.
+case "$REPO" in
+	''|OWNER/*) REPO="$DEFAULT_REPO" ;;
+esac
 
 mkdir -p "$RUN_DIR" /etc/9router /usr/libexec/9router 2>/dev/null
 

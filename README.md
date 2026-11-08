@@ -9,7 +9,7 @@ questions and release requests.
 
 The binary is **not** shipped in the firmware. The package installs a small
 root-owned installer; the ~43 MB static gateway binary is downloaded on demand
-from a GitHub release that you control, verified against `SHA256SUMS.txt`, and
+from this repository's GitHub Releases, verified against `SHA256SUMS.txt`, and
 kept under `/usr/libexec/9router/9router-go` with a `.bak` copy for rollback.
 
 ## Why a custom release repository
@@ -28,10 +28,15 @@ SHA256SUMS.txt
 `.github/workflows/release.yml` runs it on every `v*` tag and attaches the
 files to the release.
 
-Point the panel at your repository in **Services -> 9Router -> Settings ->
-Release repository** (`owner/repo`). The default value in
-`/etc/config/9router` is a placeholder (`OWNER/9router-go-openwrt`) and the
-installer refuses to run until you change it.
+The package already knows where to fetch the binary: static builds of
+`luqman-v1/9router-go` are published on this repository's own GitHub Releases
+and the installer uses them by default. There is no source URL to type in —
+press **Install 9router-go** on the Overview page.
+
+You can still point the panel at a mirror or pin a release in
+**Tools -> 9Router -> Settings -> Release source** (`owner/repo`). Empty or the
+legacy `OWNER/...` placeholder means "use the built-in source"; no upgrade
+overwrites an explicit mirror value.
 
 ## Requirements
 
@@ -94,9 +99,9 @@ repository.
 
 1. Install the LuCI package (`opkg install` / `apk add`, or bake it into an
    image).
-2. Open **Services -> 9Router**.
-3. Set the release repository in **Settings** and save.
-4. Back on **Overview**, press **Install 9router-go**.
+2. Open **Tools -> 9Router**.
+3. Press **Install 9router-go** — one click downloads, verifies, installs and
+   starts the gateway. No settings are required.
 
 The installer:
 

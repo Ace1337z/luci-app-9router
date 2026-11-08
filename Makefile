@@ -7,7 +7,11 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-9router
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=1
+# r2: menu moved to Tools; the overview no longer hardcodes light-theme colours
+# (9router.css resolves --v-* first), and it loads that stylesheet itself.
+# r3: one-click install (built-in release source), fix "[object HTMLDivElement]"
+# cards, optional release override, maintainer contact in the UI.
+PKG_RELEASE:=3
 PKG_LICENSE:=MIT
 PKG_LICENSE_FILES:=LICENSE
 PKG_MAINTAINER:=Ace1337z <https://t.me/bytewrt>

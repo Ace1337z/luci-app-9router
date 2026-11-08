@@ -441,6 +441,32 @@ function logsBox() {
 	]);
 }
 
+function supportBox() {
+	return E('div', { 'class': 'cbi-section', 'style': 'margin-top:12px;padding:12px;border:1px solid #ddd;border-radius:4px' }, [
+		E('h3', { 'style': 'margin:0 0 6px' }, _('Maintainer')),
+		E('div', { 'style': 'font-size:92%;color:#666' },
+			_('This LuCI package is maintained by Ace1337z. Report bugs, packaging problems or release requests through either channel.')),
+		E('div', { 'style': 'display:flex;flex-wrap:wrap;gap:16px;margin-top:6px' }, [
+			E('span', {}, [
+				_('Telegram: '),
+				E('a', {
+					'href': 'https://t.me/bytewrt',
+					'target': '_blank',
+					'rel': 'noopener noreferrer'
+				}, '@bytewrt')
+			]),
+			E('span', {}, [
+				_('GitHub: '),
+				E('a', {
+					'href': 'https://github.com/Ace1337z/luci-app-9router/issues',
+					'target': '_blank',
+					'rel': 'noopener noreferrer'
+				}, 'Ace1337z/luci-app-9router')
+			])
+		])
+	]);
+}
+
 /* ---------- data plumbing ---------- */
 
 function render() {
@@ -456,6 +482,7 @@ function render() {
 	root.appendChild(installBox());
 	root.appendChild(passwordBox());
 	root.appendChild(logsBox());
+	root.appendChild(supportBox());
 }
 
 function refresh() {

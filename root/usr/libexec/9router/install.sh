@@ -16,7 +16,7 @@
 #   - leaves /srv/9router (credentials + SQLite) untouched
 #
 # The binary is downloaded over HTTPS from the release repository configured in
-# UCI (release_repo). Change it in LuCI -> Services -> 9Router -> Settings.
+# UCI (release_repo). Change it in LuCI -> Tools -> 9Router -> Settings.
 
 CONFIG=9router
 RUN_DIR=/var/run/9router
@@ -162,21 +162,14 @@ if [ -n "$ARCHCFG" ]; then
 else
 	UNAME_M=$(uname -m)
 	case "$UNAME_M" in
-		x86_64|amd64)        ARCH=amd64 ;;
-		aarch64|arm64)       ARCH=arm64 ;;
-		armv7l|armv7)        ARCH=armv7 ;;
-		armv6l|armv6)        ARCH=armv6 ;;
-		i386|i486|i586|i686) ARCH=386 ;;
-		mips64el|mips64le)   ARCH=mips64le ;;
-		mips64)              ARCH=mips64 ;;
-		mipsel)              ARCH=mipsle ;;
-		mips)                ARCH=mips ;;
-		*)                   fail "Unsupported CPU architecture: $UNAME_M (set install_arch to override)" ;;
+		x86_64|amd64)  ARCH=amd64 ;;
+		aarch64|arm64) ARCH=arm64 ;;
+		*) fail "Unsupported CPU architecture: $UNAME_M. The 9router-go release only ships 64-bit amd64 and arm64 builds." ;;
 	esac
 fi
 case "$ARCH" in
-	amd64|arm64|armv7|armv6|386|mips|mipsle|mips64|mips64le) ;;
-	*) fail "Unsupported install_arch: $ARCH" ;;
+	amd64|arm64) ;;
+	*) fail "Unsupported install_arch: $ARCH (only amd64 and arm64 assets exist)" ;;
 esac
 ASSET="9router-go-linux-${ARCH}-static.gz"
 log "arch=$ARCH asset=$ASSET"

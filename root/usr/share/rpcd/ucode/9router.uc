@@ -283,15 +283,17 @@ function history(path, points) {
 		let ts = toint(f[0], 0);
 		if (!ts)
 			continue;
-		out.ts.push(ts);
-		out.cpu.push(toint(f[1], 0) / 100);
-		out.rss.push(toint(f[2], 0));
-		out.mem.push(toint(f[3], 0));
-		out.data.push(toint(f[4], 0));
-		out.fs_used.push(toint(f[5], 0));
-		out.fs_total.push(toint(f[6], 0));
-		out.data_used.push(length(f) > 10 ? toint(f[10], 0) : 0);
-		out.data_total.push(length(f) > 11 ? toint(f[11], 0) : 0);
+		// ucode on OpenWrt exposes push() as a global builtin, not an array
+		// method: `out.ts.push(...)` is a TypeError here.
+		push(out.ts, ts);
+		push(out.cpu, toint(f[1], 0) / 100);
+		push(out.rss, toint(f[2], 0));
+		push(out.mem, toint(f[3], 0));
+		push(out.data, toint(f[4], 0));
+		push(out.fs_used, toint(f[5], 0));
+		push(out.fs_total, toint(f[6], 0));
+		push(out.data_used, length(f) > 10 ? toint(f[10], 0) : 0);
+		push(out.data_total, length(f) > 11 ? toint(f[11], 0) : 0);
 	}
 	return out;
 }

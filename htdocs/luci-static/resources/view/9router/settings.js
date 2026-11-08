@@ -61,17 +61,11 @@ return view.extend({
 		o.rmempty = true;
 
 		o = s.option(form.ListValue, 'install_arch', _('Force architecture'),
-			_('Override CPU detection only if the release asset naming does not match this device.'));
+			_('Override CPU detection only if the release asset naming does not match this device. ' +
+			  'Only 64-bit amd64 and arm64 builds are published.'));
 		o.value('', _('auto detect'));
 		o.value('amd64', 'amd64');
 		o.value('arm64', 'arm64');
-		o.value('armv7', 'armv7');
-		o.value('armv6', 'armv6');
-		o.value('386', '386');
-		o.value('mips', 'mips');
-		o.value('mipsle', 'mipsle');
-		o.value('mips64', 'mips64');
-		o.value('mips64le', 'mips64le');
 		o.default = '';
 		o.rmempty = true;
 

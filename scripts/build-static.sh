@@ -80,9 +80,10 @@ build_one() {
 	rm -f "$out"
 }
 
-# ARCHES lets a caller build a subset (e.g. ARCHES="arm64 amd64" for a quick
-# router test). Unset means every supported OpenWrt architecture.
-WANTED=" ${ARCHES:-amd64 arm64 armv7 armv6 386 mips mipsle mips64 mips64le} "
+# ARCHES lets a caller build a subset (e.g. ARCHES=arm64 for a quick router
+# test). Only amd64 and arm64 are supported: upstream v1.9.15 uses 64-bit-sized
+# int constants, so 32-bit targets (armv7, 386, mips, ...) do not compile.
+WANTED=" ${ARCHES:-amd64 arm64} "
 want() {
 	case "$WANTED" in
 		*" $1 "*) return 0 ;;
@@ -92,13 +93,6 @@ want() {
 
 want amd64    && build_one amd64    amd64   ""
 want arm64    && build_one arm64    arm64   ""
-want armv7    && build_one armv7    arm     "GOARM=7"
-want armv6    && build_one armv6    arm     "GOARM=6"
-want 386      && build_one 386      386     ""
-want mips     && build_one mips     mips    "GOMIPS=softfloat"
-want mipsle   && build_one mipsle   mipsle  "GOMIPS=softfloat"
-want mips64   && build_one mips64   mips64  "GOMIPS64=softfloat"
-want mips64le && build_one mips64le mips64le "GOMIPS64=softfloat"
 
 ( cd "$OUT" && sha256sum ./*.gz | sed 's#\./##' > SHA256SUMS.txt )
 

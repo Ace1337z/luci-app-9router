@@ -10,7 +10,9 @@ PKG_VERSION:=1.0.0
 # r2: menu moved to Tools; the overview no longer hardcodes light-theme colours
 # (9router.css resolves --v-* first), and it loads that stylesheet itself.
 # r3: one-click install (built-in release source), fix "[object HTMLDivElement]"
-# cards, optional release override, maintainer contact in the UI.
+# cards, optional release override, maintainer contact in the UI. Also fixes
+# the rpcd stats call (ucode arrays use the global push() builtin, not a
+# method) and limits assets to the 64-bit amd64/arm64 targets upstream builds.
 PKG_RELEASE:=3
 PKG_LICENSE:=MIT
 PKG_LICENSE_FILES:=LICENSE

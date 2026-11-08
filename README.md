@@ -23,8 +23,9 @@ do not run on musl-based OpenWrt. This package expects assets built with
 SHA256SUMS.txt
 ```
 
-`scripts/build-static.sh` builds those assets for
-`amd64 arm64 armv7 armv6 386 mips mipsle mips64 mips64le`.
+`scripts/build-static.sh` builds those assets for `amd64 arm64`.
+32-bit targets are not built: upstream v1.9.15 uses 64-bit-sized integer
+constants and does not compile as `arm`/`386`/`mips`.
 `.github/workflows/release.yml` runs it on every `v*` tag and attaches the
 files to the release.
 
@@ -181,8 +182,8 @@ brick the router.
 - Browser access to the dashboard uses plain HTTP. Bind to `127.0.0.1` or a
   VPN address, or put it behind the router's TLS reverse proxy.
 - History is not preserved across reboot by default.
-- Go binaries for `mips`/`mips64` are built with softfloat; hardfloat-only
-  targets must build their own asset.
+- Only 64-bit `amd64` and `arm64` assets are published. 32-bit routers are not
+  supported by the current upstream source.
 - The DB is never garbage-collected by this package; watch the *Data directory*
   chart and raise `sample_interval` if `du` on a huge data dir is expensive.
 

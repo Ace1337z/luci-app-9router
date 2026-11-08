@@ -45,6 +45,13 @@ if [ ! -d "$SRC/web/dist" ]; then
 fi
 
 mkdir -p "$OUT"
+# Relative output dirs are resolved before build_one cd's into the source tree,
+# otherwise the binary lands in $SRC/dist and the size check looks in the wrong
+# place (this is what broke the first CI run).
+case "$OUT" in
+	/*) ;;
+	*) OUT="$PWD/$OUT" ;;
+esac
 
 # Upstream prints the version with a leading "v" of its own; strip ours so the
 # banner does not read "vv1.9.15".

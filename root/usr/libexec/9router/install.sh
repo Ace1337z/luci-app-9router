@@ -242,8 +242,14 @@ rm -f "$gz"
 part_size=$(wc -c < "$part" 2>/dev/null)
 case "$part_size" in ''|*[!0-9]*) part_size=0 ;; esac
 [ "$part_size" -gt 10000000 ] || fail "Extracted binary is too small (${part_size} bytes)"
-magic=$(head -c 4 "$part" 2>/dev/null | od -An -tx1 | tr -d ' \n')
-[ "$magic" = "7f454c46" ] || fail "Downloaded asset is not an ELF binary"
+# busybox on some OpenWrt builds ships hexdump but not od (the inverse of the
+# common desktop layout), so try both instead of assuming od exists.
+if command -v hexdump >/dev/null 2>&1; then
+	magic=$(head -c 4 "$part" 2>/dev/null | hexdump -v -e '1/1 "%02x"' | tr -d ' \n')
+else
+	magic=$(head -c 4 "$part" 2>/dev/null | od -An -tx1 | tr -d ' \n')
+fi
+[ "$magic" = "7f454c46" ] || fail "Downloaded asset is not an ELF binary (magic '${magic}')"
 chmod 0755 "$part"
 
 # --------------------------------------------------------------------- swap

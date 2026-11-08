@@ -3,6 +3,10 @@
 LuCI panel that installs, supervises and monitors
 [9router-go](https://github.com/luqman-v1/9router-go) on OpenWrt.
 
+Maintainer: **Ace1337z** — Telegram [@bytewrt](https://t.me/bytewrt).
+Open an issue on GitHub or send a Telegram message for bugs, packaging
+questions and release requests.
+
 The binary is **not** shipped in the firmware. The package installs a small
 root-owned installer; the ~43 MB static gateway binary is downloaded on demand
 from a GitHub release that you control, verified against `SHA256SUMS.txt`, and

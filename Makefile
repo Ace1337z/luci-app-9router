@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2026 9router-openwrt contributors
+# Copyright (C) 2026 Ace1337z (Telegram: @bytewrt)
 #
 # This is free software, licensed under the MIT License.
 #
@@ -10,7 +10,7 @@ PKG_VERSION:=1.0.0
 PKG_RELEASE:=1
 PKG_LICENSE:=MIT
 PKG_LICENSE_FILES:=LICENSE
-PKG_MAINTAINER:=9router-openwrt contributors
+PKG_MAINTAINER:=Ace1337z <https://t.me/bytewrt>
 
 LUCI_TITLE:=LuCI panel for 9router-go (install, run, monitor)
 LUCI_DESCRIPTION:=Installs the static 9router-go LLM gateway on demand, supervises it with procd, and graphs process CPU, RAM, data-directory growth and flash usage over time.

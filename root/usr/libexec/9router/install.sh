@@ -109,17 +109,66 @@ fail() {
 	exit 1
 }
 
+# HTTP(S) fetch with a tool chain, not "whichever tool happens to be first".
+#
+# Why curl first: uclient-fetch is IPv4-only and has no happy-eyeballs, so it
+# connects to the one A record the resolver handed it and either works or hangs
+# until -T expires. github.com load-balances across several A records and some
+# carriers blackhole one of them; on the AW1000 with a mobile uplink,
+# github.com resolved to 20.205.243.166 (dead: connect timeout every time)
+# while api.github.com resolved to 20.205.243.168 (fine). Listing a release
+# therefore worked and downloading its assets could never work, which is
+# exactly the "does release vX exist?" failure users saw. curl tries every
+# resolved address (and IPv6), follows the redirect to
+# release-assets.githubusercontent.com, and fails over on its own.
+#
+# Fallbacks stay for firmware without curl: uclient-fetch (default family, then
+# -6 where IPv6 is actually usable), then wget. Each tool is tried once; a
+# failure just moves on, and the caller reports the release/network problem.
 fetch() {
 	local url="$1" dst="$2"
-	if command -v uclient-fetch >/dev/null 2>&1; then
-		uclient-fetch -q -T 60 -O "$dst" "$url"
-	elif command -v wget >/dev/null 2>&1; then
-		wget -q -T 60 -O "$dst" "$url"
-	elif command -v curl >/dev/null 2>&1; then
-		curl -fsSL --connect-timeout 30 -o "$dst" "$url"
-	else
-		return 127
+	rm -f "$dst" 2>/dev/null
+
+	if command -v curl >/dev/null 2>&1; then
+		# -f: an HTTP 404 page must not count as a successful download, it
+		#     would later fail the SHA256 check with a confusing message.
+		# -L: release assets 302 to another host.
+		# --speed-limit/--speed-time: abort a stalled transfer (mobile links
+		#     like to die mid-body) instead of sitting on --max-time.
+		if curl -fsSL --retry 2 --retry-delay 2 --retry-connrefused \
+			--connect-timeout 20 --max-time 900 \
+			--speed-limit 1024 --speed-time 60 -o "$dst" "$url"; then
+			log "fetched via curl: $url"
+			return 0
+		fi
+		log "curl failed for $url, trying uclient-fetch"
 	fi
+
+	if command -v uclient-fetch >/dev/null 2>&1; then
+		if uclient-fetch -q -T 60 -O "$dst" "$url"; then
+			log "fetched via uclient-fetch: $url"
+			return 0
+		fi
+		# Only useful when the broken A record is the IPv4 one and the router
+		# has working IPv6; on IPv4-only links this fails in under a second.
+		if uclient-fetch -q -6 -T 60 -O "$dst" "$url"; then
+			log "fetched via uclient-fetch -6: $url"
+			return 0
+		fi
+		log "uclient-fetch failed for $url, trying wget"
+	fi
+
+	if command -v wget >/dev/null 2>&1; then
+		if wget -q -T 60 -O "$dst" "$url"; then
+			log "fetched via wget: $url"
+			return 0
+		fi
+		log "wget failed for $url"
+		return 1
+	fi
+
+	log "no download tool available (curl, uclient-fetch, wget all missing)"
+	return 127
 }
 
 # ---------------------------------------------------------------- validation
@@ -194,7 +243,7 @@ if [ "$VERSION" = "latest" ]; then
 	state resolving 10 "Resolving latest release"
 	mkdir -p "$TMP"
 	if ! fetch "https://api.github.com/repos/$REPO/releases/latest" "$TMP/release.json"; then
-		fail "Cannot reach GitHub API for $REPO"
+		fail "Cannot reach the GitHub API for $REPO (no route to api.github.com, or DNS is down)"
 	fi
 	TAG=$(sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$TMP/release.json" | head -n 1)
 	[ -n "$TAG" ] || fail "Could not read tag_name from $REPO latest release"
@@ -210,7 +259,7 @@ log "release base: $BASE"
 state downloading 20 "Downloading checksums"
 mkdir -p "$TMP"
 if ! fetch "$BASE/SHA256SUMS.txt" "$sums"; then
-	fail "Cannot download SHA256SUMS.txt (does release $VERSION exist?)"
+	fail "Cannot download SHA256SUMS.txt from $REPO $VERSION (network failure, or that release has no assets; see $LOG)"
 fi
 
 WANT=$(awk -v a="$ASSET" '$2 == a || $2 == "*" a { print $1; exit }' "$sums")
@@ -219,7 +268,7 @@ WANT=$(awk -v a="$ASSET" '$2 == a || $2 == "*" a { print $1; exit }' "$sums")
 state downloading 30 "Downloading $ASSET (about 18 MiB)"
 log "downloading $BASE/$ASSET"
 if ! fetch "$BASE/$ASSET" "$gz"; then
-	fail "Download failed: $BASE/$ASSET"
+	fail "Download failed: $BASE/$ASSET (see $LOG)"
 fi
 [ -s "$gz" ] || fail "Downloaded file is empty"
 

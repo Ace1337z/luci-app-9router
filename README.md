@@ -117,6 +117,31 @@ The installer:
 
 Updates never touch `/srv/9router`, so the database and credentials survive.
 
+### The download fails on a carrier that blocks part of GitHub
+
+Symptom: the install stops at *Downloading checksums* and the UI says
+`Cannot download SHA256SUMS.txt ...`, even though the release exists and the
+version was resolved a second earlier. `/var/log/9router-install.log` shows
+
+```
+release base: https://github.com/<owner>/<repo>/releases/download/<tag>
+FAILED: Cannot download SHA256SUMS.txt ...
+```
+
+Cause: `github.com` resolves to several IPv4 addresses and some mobile
+carriers blackhole one of them. `api.github.com` is a *different* address, so
+listing the release works while every asset download hangs. `uclient-fetch` is
+IPv4-only with no happy-eyeballs: it connects to the single address the
+resolver returned and, if that one is dead, fails after its 60 s timeout -
+every time.
+
+The installer therefore tries `curl` first (it tries every resolved address,
+including IPv6, and follows the redirect to
+`release-assets.githubusercontent.com`), then `uclient-fetch` (default family,
+then `-6`), then `wget`. If your firmware has no `curl`, installing it
+(`apk add curl` / `opkg install curl`) is the reliable workaround; the
+`fetched via curl:` line in the log confirms which tool was used.
+
 ## Monitoring
 
 `9router-monitor` samples every `sample_interval` seconds (default 30) and
@@ -206,3 +231,11 @@ On a spare device (or QEMU with an overlay):
 10. `sysupgrade -n`: config and `/srv/9router` gone, password regenerated on
     first boot.
 11. Remove the package: services stopped, binary removed, `/srv/9router` intact.
+12. Carrier block: `ip route add blackhole 20.205.243.166` (or any address
+    `github.com` resolves to) and install again. It must still succeed; the log
+    shows `fetched via curl:`. Without the fix this reproduces the
+    `Cannot download SHA256SUMS.txt` failure in 60 s.
+13. Stalled transfer: `iptables -I OUTPUT -d <asset host> -m connbytes
+    --connbytes 2000000: --connbytes-dir original -j DROP` mid-download must
+    abort within ~60 s of silence and report the failure, not hang until
+    `--max-time`.

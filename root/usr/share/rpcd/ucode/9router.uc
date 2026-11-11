@@ -303,6 +303,13 @@ function get_status() {
 	let data = cfg('data_dir', DEFAULT_DATA);
 	let port = toint(cfg('port', '20130'), 20130);
 	let bind = cfg('bind', '0.0.0.0');
+	// LAN ipaddr is a CIDR ("192.168.1.1/24" on this firmware), and a bind
+	// address may be an IPv6 literal, which needs brackets in a URL.
+	let host = bind;
+	if (bind == '0.0.0.0')
+		host = split(trim(sh('uci -q get network.lan.ipaddr 2>/dev/null')), '/')[0] || 'router';
+	if (index(host, ':') >= 0 && substr(host, 0, 1) != '[')
+		host = '[' + host + ']';
 	let marker = parse_kv(safe_read('/etc/9router/installed'));
 	let bs = safe_stat(bin);
 	let installed = !!(bs && bs.type == 'file' && bs.perm && bs.perm.user_exec);
@@ -336,7 +343,7 @@ function get_status() {
 		backup_size: bak ? toint(bak.size, 0) : 0,
 		port: port,
 		bind: bind,
-		url: 'http://' + (bind == '0.0.0.0' ? (trim(sh('uci -q get network.lan.ipaddr 2>/dev/null')) || 'router') : bind) + ':' + port + '/',
+		url: 'http://' + host + ':' + port + '/',
 		data_dir: data,
 		data_kb: data_kb_cached(data),
 		db_kb: db ? int(toint(db.size, 0) / 1024) : 0,

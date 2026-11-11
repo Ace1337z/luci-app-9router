@@ -13,7 +13,14 @@ PKG_VERSION:=1.0.0
 # cards, optional release override, maintainer contact in the UI. Also fixes
 # the rpcd stats call (ucode arrays use the global push() builtin, not a
 # method) and limits assets to the 64-bit amd64/arm64 targets upstream builds.
-PKG_RELEASE:=3
+# r4: the installer's fetch() prefers curl and falls back across
+# uclient-fetch/wget instead of using whichever tool is found first.
+# uclient-fetch is IPv4-only with no happy-eyeballs, so on carriers that
+# blackhole one of github.com's A records every asset download failed after
+# its 60 s timeout while the API (a different address) answered: the UI showed
+# "Cannot download SHA256SUMS.txt (does release vX exist?)" for a release that
+# exists. Also aborts stalled transfers instead of hanging.
+PKG_RELEASE:=4
 PKG_LICENSE:=MIT
 PKG_LICENSE_FILES:=LICENSE
 PKG_MAINTAINER:=Ace1337z <https://t.me/bytewrt>
@@ -27,8 +34,13 @@ LUCI_PKGARCH:=all
 # and a future luci-base refactor must not silently break us.
 # uclient-fetch + ca-bundle are the HTTPS download path used by the installer;
 # zlib/gzip is provided by busybox, nothing to depend on.
+# curl is the preferred download tool: uclient-fetch is IPv4-only with no
+# happy-eyeballs, so on carriers that blackhole one of github.com's A records
+# every asset download fails (see README, "The download fails on a carrier that
+# blocks part of GitHub"). Depending on it keeps the one-click install working
+# on firmware where passwall2/netstat are not installed.
 LUCI_DEPENDS:=+luci-base +rpcd +rpcd-mod-ucode +ucode +ucode-mod-fs \
-	+ucode-mod-uci +uclient-fetch +ca-bundle
+	+ucode-mod-uci +uclient-fetch +ca-bundle +curl
 
 define Package/$(PKG_NAME)/conffiles
 /etc/config/9router
